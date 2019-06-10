@@ -84,7 +84,7 @@ final class CombineTests: BaseTestCase {
         XCTAssertNotNil(secondResponse)
     }
 
-    func testThatOperatorCanBeUsedInStream() {
+    func testThatResponseOperatorCanBeUsedInStream() {
         // Given
         let urlRequest = URLRequest.makeHTTPBinRequest()
         let expect = expectation(description: "operator stream should complete")
@@ -93,6 +93,55 @@ final class CombineTests: BaseTestCase {
         // When
         _ = Publishers.Just(urlRequest)
             .map { AF.request($0) }
+            .response(of: HTTPBinResponse.self)
+            .sink {
+                response = $0
+                expect.fulfill()
+            }
+
+        waitForExpectations(timeout: timeout)
+
+        // Then
+        XCTAssertNotNil(response)
+    }
+
+    // TODO: Figure out cancellation.
+//    func testThatResponseOperatorCanBeCancelled() {
+//        // Given
+//        let urlRequest = URLRequest.makeHTTPBinRequest()
+//        let expect = expectation(description: "operator stream should complete")
+//        var response: DataResponse<HTTPBinResponse>?
+//
+//        // When
+//        let canceller = Publishers.Just(urlRequest)
+//            .map { AF.request($0) }
+//            .response(of: HTTPBinResponse.self)
+//            .sink {
+//                response = $0
+//                expect.fulfill()
+//            }
+//        canceller.cancel()
+//
+//        waitForExpectations(timeout: timeout)
+//
+//        // Then
+//        switch response?.result {
+//        case let .failure(error)?:
+//            XCTAssertTrue(error.asAFError?.isExplicitlyCancelledError == true)
+//        default: XCTFail()
+//        }
+//        XCTAssertNotNil(response)
+//    }
+
+    func testThatRequestOperatorCanBeUsedInStream() {
+        // Given
+        let urlRequest = URLRequest.makeHTTPBinRequest()
+        let expect = expectation(description: "operator stream should complete")
+        var response: DataResponse<HTTPBinResponse>?
+
+        // When
+        _ = Publishers.Just(urlRequest)
+            .request()
             .response(of: HTTPBinResponse.self)
             .sink {
                 response = $0
