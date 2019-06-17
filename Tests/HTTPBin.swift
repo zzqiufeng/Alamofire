@@ -62,6 +62,20 @@ extension Data {
     }
 }
 
+struct HTTPBinRequest: URLRequestConvertible {
+    let method: HTTPMethod
+    let parameters: HTTPBinParameters
+    
+    func asURLRequest() throws -> URLRequest {
+        var request = URLRequest.makeHTTPBinRequest(path: method.rawValue.lowercased(),
+                                                    method: method,
+                                                    headers: [])
+        request = try JSONParameterEncoder().encode(parameters, into: request)
+
+        return request
+    }
+}
+
 struct HTTPBinResponse: Decodable {
     let headers: [String: String]
     let origin: String

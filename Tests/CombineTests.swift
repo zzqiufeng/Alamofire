@@ -169,6 +169,27 @@ final class CombineTests: BaseTestCase {
         // Then
         XCTAssertNotNil(response)
     }
+    
+    func testThatURLRequestConvertibleOperatorCanBeUsedInStream() {
+        // Given
+        let request = HTTPBinRequest(method: .get, parameters: .default)
+        let expect = expectation(description: "operator stream should complete")
+        var response: DataResponse<HTTPBinResponse>?
+        
+        // When
+        _ = Publishers.Just(request)
+            .request()
+            .response(of: HTTPBinResponse.self)
+            .sink {
+                response = $0
+                expect.fulfill()
+            }
+        
+        waitForExpectations(timeout: timeout)
+        
+        // Then
+        XCTAssertNotNil(response)
+    }
 }
 
 #endif
