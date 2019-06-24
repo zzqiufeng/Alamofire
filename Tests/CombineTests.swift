@@ -129,8 +129,7 @@ final class CombineTests: BaseTestCase {
 //        var response: DataResponse<HTTPBinResponse>?
 //
 //        // When
-//        let canceller = Publishers.Just(urlRequest)
-//            .map { AF.request($0) }
+//        let canceller = Session.default.requestPublisher(for: urlRequest)
 //            .response(of: HTTPBinResponse.self)
 //            .sink {
 //                response = $0
@@ -141,6 +140,7 @@ final class CombineTests: BaseTestCase {
 //        waitForExpectations(timeout: timeout)
 //
 //        // Then
+//        print(response)
 //        switch response?.result {
 //        case let .failure(error)?:
 //            XCTAssertTrue(error.asAFError?.isExplicitlyCancelledError == true)

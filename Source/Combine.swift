@@ -28,6 +28,13 @@ import Combine
 import Dispatch
 import Foundation
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, *)
+extension Session {
+    public func requestPublisher(for urlRequest: URLRequestConvertible) -> AnyPublisher<DataRequest, Never> {
+        return Publishers.Just(urlRequest).request(using: self).eraseToAnyPublisher()
+    }
+}
+
 extension DataRequest {
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, *)
     public func futureDecodable<T: Decodable>(of type: T.Type = T.self, queue: DispatchQueue = .main, decoder: DataDecoder = JSONDecoder()) -> Publishers.Future<DataResponse<T>, Never> {
@@ -69,12 +76,12 @@ public extension Publishers {
             }
 
             public func receive<S>(subscriber: S) where S : Subscriber, Failure == S.Failure, Output == S.Input {
-                let inner = Inner(subscriber,session: session)
+                let inner = Inner(subscriber, session: session)
                 upstream.subscribe(inner)
                 subscriber.receive(subscription: inner)
             }
 
-            final class Inner<Downstream: Subscriber>: Subscriber, Subscription where Downstream.Input == DataRequest {
+            private final class Inner<Downstream: Subscriber>: Subscriber, Cancellable, Subscription where Downstream.Input == DataRequest {
                 typealias Input = URLRequestConvertible
                 typealias Failure = Downstream.Failure
 
@@ -126,6 +133,7 @@ public extension Publishers {
 
                 func cancel() {
                     mutableState.write { (state) in
+                        state.subscription?.cancel()
                         state.subscription = nil
                         state.downstream = nil
                     }
@@ -153,7 +161,7 @@ public extension Publishers {
                 subscriber.receive(subscription: inner)
             }
 
-            final class Inner<Downstream: Subscriber>: Subscriber, Subscription where Downstream.Input == DataResponse<T> {
+            private final class Inner<Downstream: Subscriber>: Subscriber, Cancellable, Subscription where Downstream.Input == DataResponse<T> {
                 typealias Input = DataRequest
                 typealias Failure = Downstream.Failure
 
@@ -213,6 +221,7 @@ public extension Publishers {
                     mutableState.write { (state) in
                         state.request?.cancel()
                         state.request = nil
+                        state.subscription?.cancel()
                         state.subscription = nil
                         state.downstream = nil
                     }
