@@ -31,14 +31,14 @@ import Foundation
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, *)
 extension Session {
     public func requestPublisher(for urlRequest: URLRequestConvertible) -> AnyPublisher<DataRequest, Never> {
-        return Publishers.Just(urlRequest).request(using: self).eraseToAnyPublisher()
+        return Just(urlRequest).request(using: self).eraseToAnyPublisher()
     }
 }
 
 extension DataRequest {
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, *)
-    public func futureDecodable<T: Decodable>(of type: T.Type = T.self, queue: DispatchQueue = .main, decoder: DataDecoder = JSONDecoder()) -> Publishers.Future<DataResponse<T>, Never> {
-        return Publishers.Future { (completion) in
+    public func futureDecodable<T: Decodable>(of type: T.Type = T.self, queue: DispatchQueue = .main, decoder: DataDecoder = JSONDecoder()) -> Future<DataResponse<T>, Never> {
+        return Future { (completion) in
             self.responseDecodable(queue: queue, decoder: decoder) { (response: DataResponse<T>) in
                 completion(.success(response))
             }
