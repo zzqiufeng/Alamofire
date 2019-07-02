@@ -39,7 +39,7 @@ final class CombineTests: BaseTestCase {
 
         // When
         let request = AF.request(urlRequest)
-        let future = Publishers.Future<DataResponse<HTTPBinResponse>, Never> { completion in
+        let future = Future<DataResponse<HTTPBinResponse>, Never> { completion in
             request.responseDecodable { (networkResponse: DataResponse<HTTPBinResponse>) in
                 completion(.success(networkResponse))
             }
@@ -107,7 +107,7 @@ final class CombineTests: BaseTestCase {
         var response: DataResponse<HTTPBinResponse>?
 
         // When
-        _ = Publishers.Just(urlRequest)
+        _ = Just(urlRequest)
             .map { AF.request($0) }
             .response(of: HTTPBinResponse.self)
             .sink {
@@ -156,7 +156,7 @@ final class CombineTests: BaseTestCase {
         var response: DataResponse<HTTPBinResponse>?
 
         // When
-        _ = Publishers.Just(urlRequest)
+        _ = Just(urlRequest)
             .request()
             .response(of: HTTPBinResponse.self)
             .sink {
@@ -177,7 +177,7 @@ final class CombineTests: BaseTestCase {
         var response: DataResponse<HTTPBinResponse>?
         
         // When
-        _ = Publishers.Just(request)
+        _ = Just(request)
             .request()
             .response(of: HTTPBinResponse.self)
             .sink {
