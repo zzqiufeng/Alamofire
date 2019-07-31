@@ -30,7 +30,20 @@ import XCTest
 import Combine
 
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, *)
-final class CombineTests: BaseTestCase {
+class CombineTestCase: BaseTestCase {
+    /// Cancellable value that isn't cleared until after a test case completes.
+    var cancellable: AnyCancellable?
+    
+    override func tearDown() {
+        super.tearDown()
+        
+        cancellable?.cancel()
+        cancellable = nil
+    }
+}
+
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, *)
+final class CombineTests: CombineTestCase {
     func testThatResponsesCanBeManuallyWrappedByFuture() {
         // Given
         let urlRequest = URLRequest.makeHTTPBinRequest()
@@ -45,7 +58,7 @@ final class CombineTests: BaseTestCase {
             }
         }
 
-        _ = future.sink {
+        cancellable = future.sink {
             response = $0
             expect.fulfill()
         }
@@ -65,7 +78,7 @@ final class CombineTests: BaseTestCase {
         // When
         let request = AF.request(urlRequest)
         let future = request.futureDecodable(of: HTTPBinResponse.self)
-        _ = future.sink {
+        cancellable = future.sink {
             response = $0
             expect.fulfill()
         }
@@ -87,7 +100,7 @@ final class CombineTests: BaseTestCase {
         let first = AF.request(urlRequest).futureDecodable(of: HTTPBinResponse.self)
         let second = AF.request(urlRequest).futureDecodable(of: HTTPBinResponse.self)
         let zipped = Publishers.Zip(first, second)
-        _ = zipped.sink {
+        cancellable = zipped.sink {
             firstResponse = $0
             secondResponse = $1
             expect.fulfill()
@@ -107,7 +120,7 @@ final class CombineTests: BaseTestCase {
         var response: DataResponse<HTTPBinResponse>?
 
         // When
-        _ = Just(urlRequest)
+        cancellable = Just(urlRequest)
             .map { AF.request($0) }
             .response(of: HTTPBinResponse.self)
             .sink {
@@ -156,7 +169,7 @@ final class CombineTests: BaseTestCase {
         var response: DataResponse<HTTPBinResponse>?
 
         // When
-        _ = Just(urlRequest)
+        cancellable = Just(urlRequest)
             .request()
             .response(of: HTTPBinResponse.self)
             .sink {
@@ -177,7 +190,7 @@ final class CombineTests: BaseTestCase {
         var response: DataResponse<HTTPBinResponse>?
         
         // When
-        _ = Just(request)
+        cancellable = Just(request)
             .request()
             .response(of: HTTPBinResponse.self)
             .sink {
