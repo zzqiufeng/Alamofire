@@ -153,14 +153,14 @@ open class URLEncodedFormParameterEncoder: ParameterEncoder {
             throw AFError.parameterEncoderFailed(reason: .missingRequiredComponent(.url))
         }
 
-        guard let rawMethod = request.httpMethod, let method = HTTPMethod(rawValue: rawMethod) else {
+        guard let method = request.method else {
             let rawValue = request.httpMethod ?? "nil"
             throw AFError.parameterEncoderFailed(reason: .missingRequiredComponent(.httpMethod(rawValue: rawValue)))
         }
 
         if destination.encodesParametersInURL(for: method),
             var components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
-            let query: String = try AFResult<String> { try encoder.encode(parameters) }
+            let query: String = try Result<String, Error> { try encoder.encode(parameters) }
                                 .mapError { AFError.parameterEncoderFailed(reason: .encoderFailed(error: $0)) }.get()
             let newQueryString = [components.percentEncodedQuery, query].compactMap { $0 }.joinedWithAmpersands()
             components.percentEncodedQuery = newQueryString.isEmpty ? nil : newQueryString
@@ -175,7 +175,7 @@ open class URLEncodedFormParameterEncoder: ParameterEncoder {
                 request.headers.update(.contentType("application/x-www-form-urlencoded; charset=utf-8"))
             }
 
-            request.httpBody = try AFResult<Data> { try encoder.encode(parameters) }
+            request.httpBody = try Result<Data, Error> { try encoder.encode(parameters) }
                                 .mapError { AFError.parameterEncoderFailed(reason: .encoderFailed(error: $0)) }.get()
         }
 

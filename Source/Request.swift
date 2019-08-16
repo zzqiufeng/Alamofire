@@ -604,6 +604,8 @@ public class Request {
                 return
             }
 
+            // Resume to ensure metrics are gathered.
+            task.resume()
             task.cancel()
             underlyingQueue.async { self.didCancelTask(task) }
         }
@@ -776,7 +778,8 @@ public class Request {
     // MARK: Cleanup
 
     /// Final cleanup step executed when the instance finishes response serialization.
-    open func cleanup() {
+    func cleanup() {
+        delegate?.cleanup(after: self)
         // No-op: override in subclass
     }
 }
@@ -892,6 +895,11 @@ extension Request {
 public protocol RequestDelegate: AnyObject {
     /// `URLSessionConfiguration` used to create the underlying `URLSessionTask`s.
     var sessionConfiguration: URLSessionConfiguration { get }
+
+    /// Notifies the delegate the `Request` has reached a point where it needs cleanup.
+    ///
+    /// - Parameter request: The `Request` to cleanup after.
+    func cleanup(after request: Request)
 
     /// Asynchronously ask the delegate whether a `Request` will be retried.
     ///
@@ -1159,8 +1167,8 @@ public class DownloadRequest: Request {
     ///
     /// - Parameters:
     ///   - task:   `URLSessionTask` that finished the download.
-    ///   - result: `AFResult` of the automatic move to `destination`.
-    func didFinishDownloading(using task: URLSessionTask, with result: AFResult<URL>) {
+    ///   - result: `Result` of the automatic move to `destination`.
+    func didFinishDownloading(using task: URLSessionTask, with result: Result<URL, Error>) {
         eventMonitor?.request(self, didFinishDownloadingUsing: task, with: result)
 
         switch result {
@@ -1255,12 +1263,16 @@ public class DownloadRequest: Request {
             }
 
             if let completionHandler = completionHandler {
+                // Resume to ensure metrics are gathered.
+                task.resume()
                 task.cancel { (resumeData) in
                     self.protectedDownloadMutableState.write { $0.resumeData = resumeData }
                     self.underlyingQueue.async { self.didCancelTask(task) }
                     completionHandler(resumeData)
                 }
             } else {
+                // Resume to ensure metrics are gathered.
+                task.resume()
                 task.cancel()
                 self.underlyingQueue.async { self.didCancelTask(task) }
             }
@@ -1318,6 +1330,10 @@ public class UploadRequest: DataRequest {
     /// The `UploadableConvertible` value used to produce the `Uploadable` value for this instance.
     public let upload: UploadableConvertible
 
+    /// `FileManager` used to perform cleanup tasks, including the removal of multipart form encoded payloads written
+    /// to disk.
+    public let fileManager: FileManager
+
     // MARK: Mutable State
 
     /// `Uploadable` value used by the instance.
@@ -1340,8 +1356,10 @@ public class UploadRequest: DataRequest {
          serializationQueue: DispatchQueue,
          eventMonitor: EventMonitor?,
          interceptor: RequestInterceptor?,
+         fileManager: FileManager,
          delegate: RequestDelegate) {
         self.upload = convertible
+        self.fileManager = fileManager
 
         super.init(id: id,
                    convertible: convertible,
@@ -1404,7 +1422,7 @@ public class UploadRequest: DataRequest {
     }
 
     public override func cleanup() {
-        super.cleanup()
+        defer { super.cleanup() }
 
         guard
             let uploadable = self.uploadable,
@@ -1412,8 +1430,7 @@ public class UploadRequest: DataRequest {
             shouldRemove
         else { return }
 
-        // TODO: Abstract file manager
-        try? FileManager.default.removeItem(at: url)
+        try? fileManager.removeItem(at: url)
     }
 }
 
