@@ -10,7 +10,7 @@ jobs:
       - uses: actions/checkout@v1    
       - name: macOS
         run: |
-          xcodebuild -project "Alamofire.xcodeproj" -scheme "Alamofire macOS" -destination "platform=macOS" clean test | xcpretty && exit ${PIPESTATUS[0]}"
+          xcodebuild -project "Alamofire.xcodeproj" -scheme "Alamofire macOS" -destination "platform=macOS" clean test | xcpretty && exit ${PIPESTATUS[0]}
   iOS:
     name: Test iOS 
     runs-on: macOS-latest
@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v1            
       - name: iOS - ${{ matrix.destination }}
         run: |
-          xcodebuild -project "Alamofire.xcodeproj" -scheme "Alamofire iOS" -destination "${{ matrix.destination }}" clean test | xcpretty && exit ${PIPESTATUS[0]}"
+          xcodebuild -project "Alamofire.xcodeproj" -scheme "Alamofire iOS" -destination "${{ matrix.destination }}" clean test | xcpretty && exit ${PIPESTATUS[0]}
   tvOS:
     name: Test tvOS 
     runs-on: macOS-latest
@@ -32,7 +32,7 @@ jobs:
       - uses: actions/checkout@v1            
       - name: tvOS - ${{ matrix.destination }}
         run: |
-          xcodebuild -project "Alamofire.xcodeproj" -scheme "Alamofire tvOS" -destination "${{ matrix.destination }}" clean test | xcpretty && exit ${PIPESTATUS[0]}"
+          xcodebuild -project "Alamofire.xcodeproj" -scheme "Alamofire tvOS" -destination "${{ matrix.destination }}" clean test | xcpretty && exit ${PIPESTATUS[0]}
   watchOS:
     name: Build watchOS
     runs-on: macOS-latest
@@ -43,7 +43,7 @@ jobs:
       - uses: actions/checkout@v1
       - name: watchOS - ${{ matrix.destination }}
         run: |
-          xcodebuild -project "Alamofire.xcodeproj" -scheme "Alamofire watchOS" -destination "${{ matrix.destination }}" clean build | xcpretty && exit ${PIPESTATUS[0]}"
+          xcodebuild -project "Alamofire.xcodeproj" -scheme "Alamofire watchOS" -destination "${{ matrix.destination }}" clean build | xcpretty && exit ${PIPESTATUS[0]}
   spm:
     name: Test SPM Build
     runs-on: macOS-latest    
