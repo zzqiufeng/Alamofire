@@ -11,7 +11,6 @@ jobs:
       - name: macOS
         run: |
           set -e o pipefail 
-          sudo xcversion select 10.3
           xcodebuild -project "Alamofire.xcodeproj" -scheme "Alamofire macOS" -destination "platform=macOS" clean test | xcpretty
   iOS:
     name: Test iOS 
@@ -24,7 +23,6 @@ jobs:
       - name: iOS - ${{ matrix.destination }}
         run: s|
           set -e o pipefail 
-          sudo xcversion select 10.3
           xcodebuild -project "Alamofire.xcodeproj" -scheme "Alamofire iOS" -destination "${{ matrix.destination }}" clean test | xcpretty
   tvOS:
     name: Test tvOS 
@@ -37,7 +35,6 @@ jobs:
       - name: tvOS - ${{ matrix.destination }}
         run: |
           set -e o pipefail
-          sudo xcversion select 10.3
           xcodebuild -project "Alamofire.xcodeproj" -scheme "Alamofire tvOS" -destination "${{ matrix.destination }}" clean test | xcpretty
   watchOS:
     name: Build watchOS
@@ -50,7 +47,6 @@ jobs:
       - name: watchOS - ${{ matrix.destination }}
         run: |
           set -e o pipefail
-          sudo xcversion select 10.3
           xcodebuild -project "Alamofire.xcodeproj" -scheme "Alamofire watchOS" -destination "${{ matrix.destination }}" clean build | xcpretty
   spm:
     name: Test SPM Build
