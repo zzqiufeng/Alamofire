@@ -9,7 +9,7 @@ jobs:
     steps:
       - uses: actions/checkout@v1    
       - name: macOS
-        run: xcodebuild -project "Alamofire.xcodeproj" -scheme "Alamofire macOS" -destination "platform=macOS" clean test | xcpretty
+        run: set -o pipefail | xcodebuild -project "Alamofire.xcodeproj" -scheme "Alamofire macOS" -destination "platform=macOS" clean test | xcpretty
   iOS:
     name: Test iOS 
     runs-on: macOS-latest
@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v1            
       - name: iOS - ${{ matrix.destination }}
-        run: xcodebuild -project "Alamofire.xcodeproj" -scheme "Alamofire iOS" -destination "${{ matrix.destination }}" clean test | xcpretty
+        run: set -o pipefail | xcodebuild -project "Alamofire.xcodeproj" -scheme "Alamofire iOS" -destination "${{ matrix.destination }}" clean test | xcpretty
   tvOS:
     name: Test tvOS 
     runs-on: macOS-latest
@@ -29,7 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@v1            
       - name: tvOS - ${{ matrix.destination }}
-        run: xcodebuild -project "Alamofire.xcodeproj" -scheme "Alamofire tvOS" -destination "${{ matrix.destination }}" clean test | xcpretty
+        run: set -o pipefail | xcodebuild -project "Alamofire.xcodeproj" -scheme "Alamofire tvOS" -destination "${{ matrix.destination }}" clean test | xcpretty
   watchOS:
     name: Build watchOS
     runs-on: macOS-latest
@@ -39,7 +39,7 @@ jobs:
     steps:
       - uses: actions/checkout@v1
       - name: watchOS - ${{ matrix.destination }}
-        run: xcodebuild -project "Alamofire.xcodeproj" -scheme "Alamofire watchOS" -destination "${{ matrix.destination }}" clean build | xcpretty
+        run: set -o pipefail | xcodebuild -project "Alamofire.xcodeproj" -scheme "Alamofire watchOS" -destination "${{ matrix.destination }}" clean build | xcpretty
   spm:
     name: Test SPM Build
     runs-on: macOS-latest    
