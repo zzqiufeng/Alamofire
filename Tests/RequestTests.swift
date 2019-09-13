@@ -31,7 +31,7 @@ final class RequestResponseTestCase: BaseTestCase {
         // Given
         let urlString = "https://httpbin.org/get"
         let expectation = self.expectation(description: "GET request should succeed: \(urlString)")
-        var response: DataResponse<Data?>?
+        var response: DataResponse<Data?, AFError>?
 
         // When
         AF.request(urlString, parameters: ["foo": "bar"])
@@ -57,7 +57,7 @@ final class RequestResponseTestCase: BaseTestCase {
         let expectation = self.expectation(description: "Bytes download progress should be reported: \(urlString)")
 
         var progressValues: [Double] = []
-        var response: DataResponse<Data?>?
+        var response: DataResponse<Data?, AFError>?
 
         // When
         AF.request(urlString)
@@ -94,16 +94,14 @@ final class RequestResponseTestCase: BaseTestCase {
     func testPOSTRequestWithUnicodeParameters() {
         // Given
         let urlString = "https://httpbin.org/post"
-        let parameters = [
-            "french": "français",
-            "japanese": "日本語",
-            "arabic": "العربية",
-            "emoji": "😃"
-        ]
+        let parameters = ["french": "français",
+                          "japanese": "日本語",
+                          "arabic": "العربية",
+                          "emoji": "😃"]
 
         let expectation = self.expectation(description: "request should succeed")
 
-        var response: DataResponse<Any>?
+        var response: DataResponse<Any, AFError>?
 
         // When
         AF.request(urlString, method: .post, parameters: parameters)
@@ -119,7 +117,7 @@ final class RequestResponseTestCase: BaseTestCase {
         XCTAssertNotNil(response?.response)
         XCTAssertNotNil(response?.data)
 
-        if let json = response?.result.value as? [String: Any], let form = json["form"] as? [String: String] {
+        if let json = response?.result.success as? [String: Any], let form = json["form"] as? [String: String] {
             XCTAssertEqual(form["french"], parameters["french"])
             XCTAssertEqual(form["japanese"], parameters["japanese"])
             XCTAssertEqual(form["arabic"], parameters["arabic"])
@@ -147,15 +145,13 @@ final class RequestResponseTestCase: BaseTestCase {
             return data.base64EncodedString(options: .lineLength64Characters)
         }()
 
-        let parameters = [
-            "email": "user@alamofire.org",
-            "png_image": pngBase64EncodedString,
-            "jpeg_image": jpegBase64EncodedString
-        ]
+        let parameters = ["email": "user@alamofire.org",
+                          "png_image": pngBase64EncodedString,
+                          "jpeg_image": jpegBase64EncodedString]
 
         let expectation = self.expectation(description: "request should succeed")
 
-        var response: DataResponse<Any>?
+        var response: DataResponse<Any, AFError>?
 
         // When
         AF.request(urlString, method: .post, parameters: parameters)
@@ -172,7 +168,7 @@ final class RequestResponseTestCase: BaseTestCase {
         XCTAssertNotNil(response?.data)
         XCTAssertEqual(response?.result.isSuccess, true)
 
-        if let json = response?.result.value as? [String: Any], let form = json["form"] as? [String: String] {
+        if let json = response?.result.success as? [String: Any], let form = json["form"] as? [String: String] {
             XCTAssertEqual(form["email"], parameters["email"])
             XCTAssertEqual(form["png_image"], parameters["png_image"])
             XCTAssertEqual(form["jpeg_image"], parameters["jpeg_image"])
@@ -188,10 +184,10 @@ final class RequestResponseTestCase: BaseTestCase {
         let queue = DispatchQueue(label: "org.alamofire.testSerializationQueue")
         let manager = Session(serializationQueue: queue)
         let expectation = self.expectation(description: "request should complete")
-        var response: DataResponse<Any>?
+        var response: DataResponse<Any, AFError>?
 
         // When
-        manager.request("https://httpbin.org/get").responseJSON { (resp) in
+        manager.request("https://httpbin.org/get").responseJSON { resp in
             response = resp
             expectation.fulfill()
         }
@@ -208,10 +204,10 @@ final class RequestResponseTestCase: BaseTestCase {
         let serializationQueue = DispatchQueue(label: "org.alamofire.testSerializationQueue")
         let manager = Session(requestQueue: requestQueue, serializationQueue: serializationQueue)
         let expectation = self.expectation(description: "request should complete")
-        var response: DataResponse<Any>?
+        var response: DataResponse<Any, AFError>?
 
         // When
-        manager.request("https://httpbin.org/get").responseJSON { (resp) in
+        manager.request("https://httpbin.org/get").responseJSON { resp in
             response = resp
             expectation.fulfill()
         }
@@ -228,57 +224,57 @@ final class RequestResponseTestCase: BaseTestCase {
         // Given
         let parameters = HTTPBinParameters(property: "one")
         let expect = expectation(description: "request should complete")
-        var receivedResponse: DataResponse<HTTPBinResponse>?
+        var receivedResponse: DataResponse<HTTPBinResponse, AFError>?
 
         // When
         AF.request("https://httpbin.org/post", method: .post, parameters: parameters, encoder: JSONParameterEncoder.default)
-          .responseDecodable { (response: DataResponse<HTTPBinResponse>) in
-              receivedResponse = response
-              expect.fulfill()
-          }
+            .responseDecodable(of: HTTPBinResponse.self) { response in
+                receivedResponse = response
+                expect.fulfill()
+            }
 
         waitForExpectations(timeout: timeout, handler: nil)
 
         // Then
-        XCTAssertEqual(receivedResponse?.result.value?.data, "{\"property\":\"one\"}")
+        XCTAssertEqual(receivedResponse?.result.success?.data, "{\"property\":\"one\"}")
     }
 
     func testThatRequestsCanPassEncodableParametersAsAURLQuery() {
         // Given
         let parameters = HTTPBinParameters(property: "one")
         let expect = expectation(description: "request should complete")
-        var receivedResponse: DataResponse<HTTPBinResponse>?
+        var receivedResponse: DataResponse<HTTPBinResponse, AFError>?
 
         // When
         AF.request("https://httpbin.org/get", method: .get, parameters: parameters)
-          .responseDecodable { (response: DataResponse<HTTPBinResponse>) in
-              receivedResponse = response
-              expect.fulfill()
-          }
+            .responseDecodable(of: HTTPBinResponse.self) { response in
+                receivedResponse = response
+                expect.fulfill()
+            }
 
         waitForExpectations(timeout: timeout, handler: nil)
 
         // Then
-        XCTAssertEqual(receivedResponse?.result.value?.args, ["property": "one"])
+        XCTAssertEqual(receivedResponse?.result.success?.args, ["property": "one"])
     }
 
     func testThatRequestsCanPassEncodableParametersAsURLEncodedBodyData() {
         // Given
         let parameters = HTTPBinParameters(property: "one")
         let expect = expectation(description: "request should complete")
-        var receivedResponse: DataResponse<HTTPBinResponse>?
+        var receivedResponse: DataResponse<HTTPBinResponse, AFError>?
 
         // When
         AF.request("https://httpbin.org/post", method: .post, parameters: parameters)
-            .responseDecodable { (response: DataResponse<HTTPBinResponse>) in
+            .responseDecodable(of: HTTPBinResponse.self) { response in
                 receivedResponse = response
                 expect.fulfill()
-        }
+            }
 
         waitForExpectations(timeout: timeout, handler: nil)
 
         // Then
-        XCTAssertEqual(receivedResponse?.result.value?.form, ["property": "one"])
+        XCTAssertEqual(receivedResponse?.result.success?.form, ["property": "one"])
     }
 
     // MARK: Lifetime Events
@@ -291,14 +287,14 @@ final class RequestResponseTestCase: BaseTestCase {
         let expect = expectation(description: "request should receive appropriate lifetime events")
         expect.expectedFulfillmentCount = 3
 
-        eventMonitor.requestDidResumeTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidResumeTask = { _, _ in expect.fulfill() }
         eventMonitor.requestDidResume = { _ in expect.fulfill() }
         eventMonitor.requestDidFinish = { _ in expect.fulfill() }
         // Fulfill other events that would exceed the expected count. Inverted expectations require the full timeout.
         eventMonitor.requestDidSuspend = { _ in expect.fulfill() }
-        eventMonitor.requestDidSuspendTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidSuspendTask = { _, _ in expect.fulfill() }
         eventMonitor.requestDidCancel = { _ in expect.fulfill() }
-        eventMonitor.requestDidCancelTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidCancelTask = { _, _ in expect.fulfill() }
 
         // When
         let request = session.request(URLRequest.makeHTTPBinRequest())
@@ -317,14 +313,14 @@ final class RequestResponseTestCase: BaseTestCase {
         let expect = expectation(description: "request should receive appropriate lifetime events")
         expect.expectedFulfillmentCount = 3
 
-        eventMonitor.requestDidResumeTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidResumeTask = { _, _ in expect.fulfill() }
         eventMonitor.requestDidResume = { _ in expect.fulfill() }
         eventMonitor.requestDidFinish = { _ in expect.fulfill() }
         // Fulfill other events that would exceed the expected count. Inverted expectations require the full timeout.
         eventMonitor.requestDidSuspend = { _ in expect.fulfill() }
-        eventMonitor.requestDidSuspendTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidSuspendTask = { _, _ in expect.fulfill() }
         eventMonitor.requestDidCancel = { _ in expect.fulfill() }
-        eventMonitor.requestDidCancelTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidCancelTask = { _, _ in expect.fulfill() }
 
         // When
         let request = session.request(URLRequest.makeHTTPBinRequest())
@@ -346,14 +342,14 @@ final class RequestResponseTestCase: BaseTestCase {
         let expect = expectation(description: "request should receive appropriate lifetime events")
         expect.expectedFulfillmentCount = 3
 
-        eventMonitor.requestDidResumeTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidResumeTask = { _, _ in expect.fulfill() }
         eventMonitor.requestDidResume = { _ in expect.fulfill() }
         eventMonitor.requestDidFinish = { _ in expect.fulfill() }
         // Fulfill other events that would exceed the expected count. Inverted expectations require the full timeout.
         eventMonitor.requestDidSuspend = { _ in expect.fulfill() }
-        eventMonitor.requestDidSuspendTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidSuspendTask = { _, _ in expect.fulfill() }
         eventMonitor.requestDidCancel = { _ in expect.fulfill() }
-        eventMonitor.requestDidCancelTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidCancelTask = { _, _ in expect.fulfill() }
 
         // When
         let request = session.request(URLRequest.makeHTTPBinRequest())
@@ -375,14 +371,14 @@ final class RequestResponseTestCase: BaseTestCase {
         let expect = expectation(description: "request should receive appropriate lifetime events")
         expect.expectedFulfillmentCount = 3
 
-        eventMonitor.requestDidResumeTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidResumeTask = { _, _ in expect.fulfill() }
         eventMonitor.requestDidResume = { _ in expect.fulfill() }
         eventMonitor.requestDidFinish = { _ in expect.fulfill() }
         // Fulfill other events that would exceed the expected count. Inverted expectations require the full timeout.
         eventMonitor.requestDidSuspend = { _ in expect.fulfill() }
-        eventMonitor.requestDidSuspendTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidSuspendTask = { _, _ in expect.fulfill() }
         eventMonitor.requestDidCancel = { _ in expect.fulfill() }
-        eventMonitor.requestDidCancelTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidCancelTask = { _, _ in expect.fulfill() }
 
         // When
         let request = session.request(URLRequest.makeHTTPBinRequest())
@@ -404,11 +400,11 @@ final class RequestResponseTestCase: BaseTestCase {
         let expect = expectation(description: "request should receive appropriate lifetime events")
         expect.expectedFulfillmentCount = 2
 
-        eventMonitor.requestDidSuspendTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidSuspendTask = { _, _ in expect.fulfill() }
         eventMonitor.requestDidSuspend = { _ in expect.fulfill() }
         // Fulfill other events that would exceed the expected count. Inverted expectations require the full timeout.
         eventMonitor.requestDidCancel = { _ in expect.fulfill() }
-        eventMonitor.requestDidCancelTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidCancelTask = { _, _ in expect.fulfill() }
 
         // When
         let request = session.request(URLRequest.makeHTTPBinRequest())
@@ -430,13 +426,13 @@ final class RequestResponseTestCase: BaseTestCase {
         let expect = expectation(description: "request should receive appropriate lifetime events")
         expect.expectedFulfillmentCount = 2
 
-        eventMonitor.requestDidSuspendTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidSuspendTask = { _, _ in expect.fulfill() }
         eventMonitor.requestDidSuspend = { _ in expect.fulfill() }
         // Fulfill other events that would exceed the expected count. Inverted expectations require the full timeout.
         eventMonitor.requestDidResume = { _ in expect.fulfill() }
-        eventMonitor.requestDidResumeTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidResumeTask = { _, _ in expect.fulfill() }
         eventMonitor.requestDidCancel = { _ in expect.fulfill() }
-        eventMonitor.requestDidCancelTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidCancelTask = { _, _ in expect.fulfill() }
 
         // When
         let request = session.request(URLRequest.makeHTTPBinRequest())
@@ -458,16 +454,16 @@ final class RequestResponseTestCase: BaseTestCase {
         let expect = expectation(description: "request should receive appropriate lifetime events")
         expect.expectedFulfillmentCount = 2
 
-        eventMonitor.requestDidCancelTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidCancelTask = { _, _ in expect.fulfill() }
         eventMonitor.requestDidCancel = { _ in expect.fulfill() }
         // Fulfill other events that would exceed the expected count. Inverted expectations require the full timeout.
         eventMonitor.requestDidSuspend = { _ in expect.fulfill() }
-        eventMonitor.requestDidSuspendTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidSuspendTask = { _, _ in expect.fulfill() }
 
         // When
         let request = session.request(URLRequest.makeHTTPBinRequest())
         // Cancellation stops task creation, so don't cancel the request until the task has been created.
-        eventMonitor.requestDidCreateTask = { (_, _) in
+        eventMonitor.requestDidCreateTask = { _, _ in
             for _ in 0..<100 {
                 request.cancel()
             }
@@ -487,18 +483,18 @@ final class RequestResponseTestCase: BaseTestCase {
         let expect = expectation(description: "request should receive appropriate lifetime events")
         expect.expectedFulfillmentCount = 2
 
-        eventMonitor.requestDidCancelTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidCancelTask = { _, _ in expect.fulfill() }
         eventMonitor.requestDidCancel = { _ in expect.fulfill() }
         // Fulfill other events that would exceed the expected count. Inverted expectations require the full timeout.
         eventMonitor.requestDidResume = { _ in expect.fulfill() }
-        eventMonitor.requestDidResumeTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidResumeTask = { _, _ in expect.fulfill() }
         eventMonitor.requestDidSuspend = { _ in expect.fulfill() }
-        eventMonitor.requestDidSuspendTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidSuspendTask = { _, _ in expect.fulfill() }
 
         // When
         let request = session.request(URLRequest.makeHTTPBinRequest())
         // Cancellation stops task creation, so don't cancel the request until the task has been created.
-        eventMonitor.requestDidCreateTask = { (_, _) in
+        eventMonitor.requestDidCreateTask = { _, _ in
             for _ in 0..<100 {
                 request.cancel()
             }
@@ -518,18 +514,18 @@ final class RequestResponseTestCase: BaseTestCase {
         let expect = expectation(description: "request should receive appropriate lifetime events")
         expect.expectedFulfillmentCount = 5
 
-        eventMonitor.requestDidCancelTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidCancelTask = { _, _ in expect.fulfill() }
         eventMonitor.requestDidCancel = { _ in expect.fulfill() }
         eventMonitor.requestDidResume = { _ in expect.fulfill() }
-        eventMonitor.requestDidResumeTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidResumeTask = { _, _ in expect.fulfill() }
         // Fulfill other events that would exceed the expected count. Inverted expectations require the full timeout.
         eventMonitor.requestDidSuspend = { _ in expect.fulfill() }
-        eventMonitor.requestDidSuspendTask = { (_, _) in expect.fulfill() }
+        eventMonitor.requestDidSuspendTask = { _, _ in expect.fulfill() }
 
         // When
         let request = session.request(URLRequest.makeHTTPBinRequest())
         // Cancellation stops task creation, so don't cancel the request until the task has been created.
-        eventMonitor.requestDidCreateTask = { (_, _) in
+        eventMonitor.requestDidCreateTask = { _, _ in
             DispatchQueue.concurrentPerform(iterations: 100) { i in
                 request.cancel()
 
@@ -564,23 +560,23 @@ final class RequestResponseTestCase: BaseTestCase {
 
         var dataReceived = false
 
-        eventMonitor.taskDidReceiveChallenge = { (_, _, _) in didReceiveChallenge.fulfill() }
-        eventMonitor.taskDidFinishCollectingMetrics = { (_, _, _) in taskDidFinishCollecting.fulfill() }
-        eventMonitor.dataTaskDidReceiveData = { (_, _, _) in
+        eventMonitor.taskDidReceiveChallenge = { _, _, _ in didReceiveChallenge.fulfill() }
+        eventMonitor.taskDidFinishCollectingMetrics = { _, _, _ in taskDidFinishCollecting.fulfill() }
+        eventMonitor.dataTaskDidReceiveData = { _, _, _ in
             guard !dataReceived else { return }
             // Data may be received many times, fulfill only once.
             dataReceived = true
             didReceiveData.fulfill()
         }
-        eventMonitor.dataTaskWillCacheResponse = { (_, _, _) in willCacheResponse.fulfill() }
-        eventMonitor.requestDidCreateInitialURLRequest = { (_, _) in didCreateURLRequest.fulfill() }
-        eventMonitor.requestDidCreateTask = { (_, _) in didCreateTask.fulfill() }
-        eventMonitor.requestDidGatherMetrics = { (_, _) in didGatherMetrics.fulfill() }
-        eventMonitor.requestDidCompleteTaskWithError = { (_, _, _) in didComplete.fulfill() }
-        eventMonitor.requestDidFinish = { (_) in didFinish.fulfill() }
-        eventMonitor.requestDidResume = { (_) in didResume.fulfill() }
-        eventMonitor.requestDidResumeTask = { (_, _) in didResumeTask.fulfill() }
-        eventMonitor.requestDidParseResponse = { (_, _) in didParseResponse.fulfill() }
+        eventMonitor.dataTaskWillCacheResponse = { _, _, _ in willCacheResponse.fulfill() }
+        eventMonitor.requestDidCreateInitialURLRequest = { _, _ in didCreateURLRequest.fulfill() }
+        eventMonitor.requestDidCreateTask = { _, _ in didCreateTask.fulfill() }
+        eventMonitor.requestDidGatherMetrics = { _, _ in didGatherMetrics.fulfill() }
+        eventMonitor.requestDidCompleteTaskWithError = { _, _, _ in didComplete.fulfill() }
+        eventMonitor.requestDidFinish = { _ in didFinish.fulfill() }
+        eventMonitor.requestDidResume = { _ in didResume.fulfill() }
+        eventMonitor.requestDidResumeTask = { _, _ in didResumeTask.fulfill() }
+        eventMonitor.requestDidParseResponse = { _, _ in didParseResponse.fulfill() }
 
         // When
         let request = session.request(URLRequest.makeHTTPBinRequest()).response { _ in
@@ -611,23 +607,23 @@ final class RequestResponseTestCase: BaseTestCase {
         let didCancelTask = expectation(description: "didCancelTask should fire")
         let responseHandler = expectation(description: "responseHandler should fire")
 
-        eventMonitor.taskDidFinishCollectingMetrics = { (_, _, _) in taskDidFinishCollecting.fulfill() }
-        eventMonitor.requestDidCreateInitialURLRequest = { (_, _) in didCreateURLRequest.fulfill() }
-        eventMonitor.requestDidCreateTask = { (_, _) in didCreateTask.fulfill() }
-        eventMonitor.requestDidGatherMetrics = { (_, _) in didGatherMetrics.fulfill() }
-        eventMonitor.requestDidCompleteTaskWithError = { (_, _, _) in didComplete.fulfill() }
-        eventMonitor.requestDidFinish = { (_) in didFinish.fulfill() }
-        eventMonitor.requestDidResume = { (_) in didResume.fulfill() }
-        eventMonitor.requestDidParseResponse = { (_, _) in didParseResponse.fulfill() }
-        eventMonitor.requestDidCancel = { (_) in didCancel.fulfill() }
-        eventMonitor.requestDidCancelTask = { (_, _) in didCancelTask.fulfill() }
+        eventMonitor.taskDidFinishCollectingMetrics = { _, _, _ in taskDidFinishCollecting.fulfill() }
+        eventMonitor.requestDidCreateInitialURLRequest = { _, _ in didCreateURLRequest.fulfill() }
+        eventMonitor.requestDidCreateTask = { _, _ in didCreateTask.fulfill() }
+        eventMonitor.requestDidGatherMetrics = { _, _ in didGatherMetrics.fulfill() }
+        eventMonitor.requestDidCompleteTaskWithError = { _, _, _ in didComplete.fulfill() }
+        eventMonitor.requestDidFinish = { _ in didFinish.fulfill() }
+        eventMonitor.requestDidResume = { _ in didResume.fulfill() }
+        eventMonitor.requestDidParseResponse = { _, _ in didParseResponse.fulfill() }
+        eventMonitor.requestDidCancel = { _ in didCancel.fulfill() }
+        eventMonitor.requestDidCancelTask = { _, _ in didCancelTask.fulfill() }
 
         // When
         let request = session.request(URLRequest.makeHTTPBinRequest()).response { _ in
             responseHandler.fulfill()
         }
 
-        eventMonitor.requestDidResumeTask = { (_, _) in
+        eventMonitor.requestDidResumeTask = { _, _ in
             request.cancel()
             didResumeTask.fulfill()
         }
@@ -644,8 +640,8 @@ final class RequestResponseTestCase: BaseTestCase {
         // Given
         let session = Session()
 
-        var response1: DataResponse<Any>?
-        var response2: DataResponse<Any>?
+        var response1: DataResponse<Any, AFError>?
+        var response2: DataResponse<Any, AFError>?
 
         let expect = expectation(description: "both response serializer completions should be called")
         expect.expectedFulfillmentCount = 2
@@ -668,17 +664,17 @@ final class RequestResponseTestCase: BaseTestCase {
         waitForExpectations(timeout: timeout, handler: nil)
 
         // Then
-        XCTAssertEqual(response1?.error?.asAFError?.isExplicitlyCancelledError, true)
-        XCTAssertEqual(response2?.error?.asAFError?.isExplicitlyCancelledError, true)
+        XCTAssertEqual(response1?.error?.isExplicitlyCancelledError, true)
+        XCTAssertEqual(response2?.error?.isExplicitlyCancelledError, true)
     }
 
     func testThatAppendingResponseSerializerToCompletedRequestInsideCompletionResumesRequest() {
         // Given
         let session = Session()
 
-        var response1: DataResponse<Any>?
-        var response2: DataResponse<Any>?
-        var response3: DataResponse<Any>?
+        var response1: DataResponse<Any, AFError>?
+        var response2: DataResponse<Any, AFError>?
+        var response3: DataResponse<Any, AFError>?
 
         let expect = expectation(description: "both response serializer completions should be called")
         expect.expectedFulfillmentCount = 3
@@ -714,9 +710,9 @@ final class RequestResponseTestCase: BaseTestCase {
         let session = Session()
         let request = session.request(URLRequest.makeHTTPBinRequest())
 
-        var response1: DataResponse<Any>?
-        var response2: DataResponse<Any>?
-        var response3: DataResponse<Any>?
+        var response1: DataResponse<Any, AFError>?
+        var response2: DataResponse<Any, AFError>?
+        var response3: DataResponse<Any, AFError>?
 
         // When
         let expect1 = expectation(description: "response serializer 1 completion should be called")
@@ -970,11 +966,9 @@ final class RequestCURLDescriptionTestCase: BaseTestCase {
         var cURLDescription: String?
         var components: [String]?
 
-        let parameters = [
-            "foo": "bar",
-            "fo\"o": "b\"ar",
-            "f'oo": "ba'r"
-        ]
+        let parameters = ["foo": "bar",
+                          "fo\"o": "b\"ar",
+                          "f'oo": "ba'r"]
 
         // When
         manager.request(urlString, method: .post, parameters: parameters, encoding: JSONEncoding.default).cURLDescription {
@@ -1002,12 +996,10 @@ final class RequestCURLDescriptionTestCase: BaseTestCase {
         // Given
         let urlString = "https://httpbin.org/post"
 
-        let properties = [
-            HTTPCookiePropertyKey.domain: "httpbin.org",
-            HTTPCookiePropertyKey.path: "/post",
-            HTTPCookiePropertyKey.name: "foo",
-            HTTPCookiePropertyKey.value: "bar",
-        ]
+        let properties = [HTTPCookiePropertyKey.domain: "httpbin.org",
+                          HTTPCookiePropertyKey.path: "/post",
+                          HTTPCookiePropertyKey.name: "foo",
+                          HTTPCookiePropertyKey.value: "bar"]
 
         let cookie = HTTPCookie(properties: properties)!
         let cookieManager = managerWithCookie(cookie)
@@ -1033,12 +1025,10 @@ final class RequestCURLDescriptionTestCase: BaseTestCase {
         // Given
         let urlString = "https://httpbin.org/post"
 
-        let properties = [
-            HTTPCookiePropertyKey.domain: "httpbin.org",
-            HTTPCookiePropertyKey.path: "/post",
-            HTTPCookiePropertyKey.name: "foo",
-            HTTPCookiePropertyKey.value: "bar",
-        ]
+        let properties = [HTTPCookiePropertyKey.domain: "httpbin.org",
+                          HTTPCookiePropertyKey.path: "/post",
+                          HTTPCookiePropertyKey.name: "foo",
+                          HTTPCookiePropertyKey.value: "bar"]
 
         let cookie = HTTPCookie(properties: properties)!
         managerDisallowingCookies.session.configuration.httpCookieStorage?.setCookie(cookie)
@@ -1067,7 +1057,7 @@ final class RequestCURLDescriptionTestCase: BaseTestCase {
         var components: [String]?
 
         // When
-        managerWithContentTypeHeader.upload(multipartFormData: { (data) in
+        managerWithContentTypeHeader.upload(multipartFormData: { data in
             data.append(japaneseData, withName: "japanese")
         }, to: urlString).cURLDescription {
             components = self.cURLCommandComponents(from: $0)
@@ -1110,6 +1100,6 @@ final class RequestCURLDescriptionTestCase: BaseTestCase {
 
     private func cURLCommandComponents(from cURLString: String) -> [String] {
         return cURLString.components(separatedBy: .whitespacesAndNewlines)
-                         .filter { $0 != "" && $0 != "\\" }
+            .filter { $0 != "" && $0 != "\\" }
     }
 }

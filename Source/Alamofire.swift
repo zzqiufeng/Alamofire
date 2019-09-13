@@ -26,6 +26,9 @@ import Foundation
 
 /// Global namespace containing API for the `default` `Session` instance.
 public enum AF {
+    /// Current Alamofire version. Necessary since SPM doesn't use dynamic libraries. Plus this will be more accurate.
+    static let version = "5.0.0-rc.2"
+
     // MARK: - Data Request
 
     /// Creates a `DataRequest` using `Session.default` to retrieve the contents of the specified `url` using the
@@ -115,7 +118,7 @@ public enum AF {
                                 encoding: ParameterEncoding = URLEncoding.default,
                                 headers: HTTPHeaders? = nil,
                                 interceptor: RequestInterceptor? = nil,
-                                to destination: DownloadRequest.Destination? =  nil) -> DownloadRequest {
+                                to destination: DownloadRequest.Destination? = nil) -> DownloadRequest {
         return Session.default.download(url,
                                         method: method,
                                         parameters: parameters,

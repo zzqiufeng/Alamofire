@@ -110,6 +110,8 @@ open class Session {
                 redirectHandler: RedirectHandler? = nil,
                 cachedResponseHandler: CachedResponseHandler? = nil,
                 eventMonitors: [EventMonitor] = []) {
+        precondition(session.configuration.identifier == nil,
+                     "Alamofire does not support background URLSessionConfigurations.")
         precondition(session.delegateQueue.underlyingQueue === rootQueue,
                      "Session(session:) intializer must be passed the DispatchQueue used as the delegateQueue's underlyingQueue as rootQueue.")
 
@@ -173,6 +175,8 @@ open class Session {
                             redirectHandler: RedirectHandler? = nil,
                             cachedResponseHandler: CachedResponseHandler? = nil,
                             eventMonitors: [EventMonitor] = []) {
+        precondition(configuration.identifier == nil, "Alamofire does not support background URLSessionConfigurations.")
+
         let delegateQueue = OperationQueue(maxConcurrentOperationCount: 1, underlyingQueue: rootQueue, name: "org.alamofire.session.sessionDelegateQueue")
         let session = URLSession(configuration: configuration, delegate: delegate, delegateQueue: delegateQueue)
 
@@ -724,7 +728,7 @@ open class Session {
                      fileManager: FileManager = .default) -> UploadRequest {
         let convertible = ParameterlessRequestConvertible(url: url, method: method, headers: headers)
 
-        let multipartUpload = MultipartUpload(isInBackgroundSession: (session.configuration.identifier != nil),
+        let multipartUpload = MultipartUpload(isInBackgroundSession: session.configuration.identifier != nil,
                                               encodingMemoryThreshold: encodingMemoryThreshold,
                                               request: convertible,
                                               multipartFormData: multipartFormData)
@@ -764,7 +768,7 @@ open class Session {
                      usingThreshold encodingMemoryThreshold: UInt64 = MultipartFormData.encodingMemoryThreshold,
                      interceptor: RequestInterceptor? = nil,
                      fileManager: FileManager = .default) -> UploadRequest {
-        let multipartUpload = MultipartUpload(isInBackgroundSession: (session.configuration.identifier != nil),
+        let multipartUpload = MultipartUpload(isInBackgroundSession: session.configuration.identifier != nil,
                                               encodingMemoryThreshold: encodingMemoryThreshold,
                                               request: request,
                                               multipartFormData: multipartFormData)
@@ -800,7 +804,6 @@ open class Session {
     }
 
     // MARK: Perform
-
 
     /// Perform `Request`.
     ///
@@ -838,7 +841,7 @@ open class Session {
 
                 self.performSetupOperations(for: request, convertible: request.convertible)
             } catch {
-                self.rootQueue.async { request.didFailToCreateUploadable(with: error) }
+                self.rootQueue.async { request.didFailToCreateUploadable(with: error.asAFError(or: .createUploadableFailed(error: error))) }
             }
         }
     }
@@ -859,33 +862,37 @@ open class Session {
     }
 
     func performSetupOperations(for request: Request, convertible: URLRequestConvertible) {
+        let initialRequest: URLRequest
+
         do {
-            let initialRequest = try convertible.asURLRequest()
+            initialRequest = try convertible.asURLRequest()
             try initialRequest.validate()
-            rootQueue.async { request.didCreateInitialURLRequest(initialRequest) }
-
-            guard !request.isCancelled else { return }
-
-            if let adapter = adapter(for: request) {
-                adapter.adapt(initialRequest, for: self) { result in
-                    do {
-                        let adaptedRequest = try result.get()
-                        try adaptedRequest.validate()
-
-                        self.rootQueue.async {
-                            request.didAdaptInitialRequest(initialRequest, to: adaptedRequest)
-                            self.didCreateURLRequest(adaptedRequest, for: request)
-                        }
-                    } catch {
-                        let adaptError = AFError.requestAdaptationFailed(error: error)
-                        self.rootQueue.async { request.didFailToAdaptURLRequest(initialRequest, withError: adaptError) }
-                    }
-                }
-            } else {
-                rootQueue.async { self.didCreateURLRequest(initialRequest, for: request) }
-            }
         } catch {
-            rootQueue.async { request.didFailToCreateURLRequest(with: error) }
+            rootQueue.async { request.didFailToCreateURLRequest(with: error.asAFError(or: .createURLRequestFailed(error: error))) }
+            return
+        }
+
+        rootQueue.async { request.didCreateInitialURLRequest(initialRequest) }
+
+        guard !request.isCancelled else { return }
+
+        guard let adapter = adapter(for: request) else {
+            rootQueue.async { self.didCreateURLRequest(initialRequest, for: request) }
+            return
+        }
+
+        adapter.adapt(initialRequest, for: self) { result in
+            do {
+                let adaptedRequest = try result.get()
+                try adaptedRequest.validate()
+
+                self.rootQueue.async {
+                    request.didAdaptInitialRequest(initialRequest, to: adaptedRequest)
+                    self.didCreateURLRequest(adaptedRequest, for: request)
+                }
+            } catch {
+                self.rootQueue.async { request.didFailToAdaptURLRequest(initialRequest, withError: .requestAdaptationFailed(error: error)) }
+            }
         }
     }
 
@@ -914,7 +921,7 @@ open class Session {
     }
 
     func updateStatesForTask(_ task: URLSessionTask, request: Request) {
-        request.withState { (state) in
+        request.withState { state in
             switch (startRequestsImmediately, state) {
             case (true, .initialized):
                 rootQueue.async { request.resume() }
@@ -975,7 +982,7 @@ extension Session: RequestDelegate {
         activeRequests.remove(request)
     }
 
-    public func retryResult(for request: Request, dueTo error: Error, completion: @escaping (RetryResult) -> Void) {
+    public func retryResult(for request: Request, dueTo error: AFError, completion: @escaping (RetryResult) -> Void) {
         guard let retrier = retrier(for: request) else {
             rootQueue.async { completion(.doNotRetry) }
             return
@@ -992,7 +999,7 @@ extension Session: RequestDelegate {
     }
 
     public func retryRequest(_ request: Request, withDelay timeDelay: TimeInterval?) {
-        self.rootQueue.async {
+        rootQueue.async {
             let retry: () -> Void = {
                 guard !request.isCancelled else { return }
 

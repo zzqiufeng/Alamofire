@@ -28,7 +28,7 @@ import Foundation
 public final class NSLoggingEventMonitor: EventMonitor {
     public let queue = DispatchQueue(label: "org.alamofire.nsLoggingEventMonitorQueue", qos: .background)
 
-    public init() { }
+    public init() {}
 
     public func urlSession(_ session: URLSession, didBecomeInvalidWithError error: Error?) {
         NSLog("URLSession: \(session), didBecomeInvalidWithError: \(error?.localizedDescription ?? "None")")
@@ -164,19 +164,19 @@ public final class NSLoggingEventMonitor: EventMonitor {
         NSLog("Request: \(request) didCancelTask: \(task)")
     }
 
-    public func request(_ request: DataRequest, didParseResponse response: DataResponse<Data?>) {
+    public func request(_ request: DataRequest, didParseResponse response: DataResponse<Data?, Error>) {
         NSLog("Request: \(request), didParseResponse: \(response)")
     }
 
-    public func request<Value>(_ request: DataRequest, didParseResponse response: DataResponse<Value>) {
+    public func request<Value>(_ request: DataRequest, didParseResponse response: DataResponse<Value, Error>) {
         NSLog("Request: \(request), didParseResponse: \(response)")
     }
 
-    public func request(_ request: DownloadRequest, didParseResponse response: DownloadResponse<Data?>) {
+    public func request(_ request: DownloadRequest, didParseResponse response: DownloadResponse<Data?, Error>) {
         NSLog("Request: \(request), didParseResponse: \(response)")
     }
 
-    public func request<Value>(_ request: DownloadRequest, didParseResponse response: DownloadResponse<Value>) {
+    public func request<Value>(_ request: DownloadRequest, didParseResponse response: DownloadResponse<Value, Error>) {
         NSLog("Request: \(request), didParseResponse: \(response)")
     }
 
