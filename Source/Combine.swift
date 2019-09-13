@@ -37,9 +37,9 @@ extension Session {
 
 extension DataRequest {
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, *)
-    public func futureDecodable<T: Decodable>(of type: T.Type = T.self, queue: DispatchQueue = .main, decoder: DataDecoder = JSONDecoder()) -> Future<DataResponse<T>, Never> {
+    public func futureDecodable<T: Decodable>(of type: T.Type = T.self, queue: DispatchQueue = .main, decoder: DataDecoder = JSONDecoder()) -> Future<AFDataResponse<T>, Never> {
         return Future { (completion) in
-            self.responseDecodable(queue: queue, decoder: decoder) { (response: DataResponse<T>) in
+            self.responseDecodable(queue: queue, decoder: decoder) { (response: AFDataResponse<T>) in
                 completion(.success(response))
             }
         }
@@ -142,7 +142,7 @@ public extension Publishers {
         }
 
         public struct Response<Upstream: Publisher, T: Decodable>: Publisher where Upstream.Output == DataRequest {
-            public typealias Output = DataResponse<T>
+            public typealias Output = AFDataResponse<T>
             public typealias Failure = Upstream.Failure
 
             let upstream: Upstream
@@ -161,7 +161,7 @@ public extension Publishers {
                 subscriber.receive(subscription: inner)
             }
 
-            private final class Inner<Downstream: Subscriber>: Subscriber, Cancellable, Subscription where Downstream.Input == DataResponse<T> {
+            private final class Inner<Downstream: Subscriber>: Subscriber, Cancellable, Subscription where Downstream.Input == AFDataResponse<T> {
                 typealias Input = DataRequest
                 typealias Failure = Downstream.Failure
 
@@ -194,7 +194,7 @@ public extension Publishers {
                 func receive(_ input: DataRequest) -> Subscribers.Demand {
                     mutableState.write { $0.request = input }
 
-                    input.responseDecodable(queue: queue, decoder: decoder) { (response: DataResponse<T>) -> Void in
+                    input.responseDecodable(queue: queue, decoder: decoder) { (response: AFDataResponse<T>) -> Void in
                         guard let result = self.mutableState.directValue.downstream?.receive(response), result > 0 else { return }
 
                         guard let subscription = self.mutableState.directValue.subscription else { return }
